@@ -22,3 +22,6 @@ venv/
 # Logs and databases
 *.log
 *.sqlite3
+
+# Ignore all subdirectories (folders) under the data folder
+data/*/
