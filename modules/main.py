@@ -1,6 +1,6 @@
 import argparse
 from roi_selection import roi_selection_loop
-from hand_detection_curent import hand_detection_loop
+from hand_detection import hand_detection_loop
 
 
 def main():
