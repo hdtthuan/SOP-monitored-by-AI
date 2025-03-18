@@ -218,7 +218,7 @@ hands_detector = mp_hands.Hands(
 # print("Hand detection started. Press 'q' to quit.")
 
 
-def process_frame(frame):
+def process_frame_action(frame):
     """
     Processes a single frame of video to detect hands and objects.
     

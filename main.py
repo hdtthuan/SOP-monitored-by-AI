@@ -6,7 +6,7 @@ logging.getLogger("ultralytics").setLevel(logging.ERROR)
 from ultralytics import YOLO
 import mediapipe as mp
 import global_variable
-from modules.hand_detection_v3 import process_frame
+from modules.hand_detection_v3 import process_frame_action
 from modules.roi_selection import roi_selection_loop
 
 
@@ -67,7 +67,7 @@ while True:
     #     for hand_landmarks in results_hands.multi_hand_landmarks:
     #         print(hand_landmarks)
 
-    action_status = process_frame(frame)
+    action_status = process_frame_action(frame)
     print(action_status)
 
     cv2.imshow("Hand Detection", frame)
