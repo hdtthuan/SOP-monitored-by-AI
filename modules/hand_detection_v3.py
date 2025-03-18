@@ -158,6 +158,7 @@ def draw_action_text(frame: cv2.Mat, actions_list) -> None:
             2,
             cv2.LINE_AA,
         )
+        return text
 
 
 def detect_actions(object_states, hand_states):
@@ -190,7 +191,6 @@ def detect_actions(object_states, hand_states):
     return actions_list
 
 
-
 """
 Performs hand and object detection in a video stream.
 
@@ -201,8 +201,7 @@ Returns:
 - None (Displays processed video in a window).
 """
 # missing_objects, ignored_objects
-global current_action,object_states
-
+global current_action, object_states
 
 
 object_disappear_count = {}
@@ -220,6 +219,15 @@ hands_detector = mp_hands.Hands(
 
 
 def process_frame(frame):
+    """
+    Processes a single frame of video to detect hands and objects.
+    
+    Parameters:
+    - frame: The current video frame to be processed.
+    
+    Returns:
+    - action_status: A string describing the detected action.
+    """
 
     # Object detection using YOLO
     results = model(frame, conf=0.3)
@@ -231,19 +239,13 @@ def process_frame(frame):
             if cls in ignored_objects:
                 continue  # 🔥 Không cần YOLO detect lại object 1-4
             if conf >= 0.3:
-                detection_boxes.append(
-                    (int(x1), int(y1), int(x2), int(y2), cls)
-                )
-
-
+                detection_boxes.append((int(x1), int(y1), int(x2), int(y2), cls))
 
     # Update object states
     for i, roi in enumerate(roi_object):
         obj_id = i + 1
         threshold = (
-            overlap_threshold_tua_vit
-            if obj_id == 5
-            else overlap_threshold_default
+            overlap_threshold_tua_vit if obj_id == 5 else overlap_threshold_default
         )
         detected = any(
             iou(roi, (x1, y1, x2, y2)) >= threshold
@@ -254,13 +256,9 @@ def process_frame(frame):
             object_states[obj_id] = True
             object_disappear_count[obj_id] = 0
         else:
-            object_disappear_count[obj_id] = (
-                object_disappear_count.get(obj_id, 0) + 1
-            )
+            object_disappear_count[obj_id] = object_disappear_count.get(obj_id, 0) + 1
             if object_disappear_count[obj_id] >= disappear_threshold:
                 object_states[obj_id] = False
-
-
 
     # Draw object detection results
     for i, roi in enumerate(roi_object):
@@ -277,8 +275,6 @@ def process_frame(frame):
             2,
         )
 
-
-
     # Draw crew detection regions
     for i, roi in enumerate(rois_crew):
         x1, y1, x2, y2 = roi
@@ -293,8 +289,6 @@ def process_frame(frame):
             2,
         )
 
-
-
     global current_action
     # Hand detection
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -303,9 +297,7 @@ def process_frame(frame):
 
     if results_hands.multi_hand_landmarks:
         for hand_landmarks in results_hands.multi_hand_landmarks:
-            mp_drawing.draw_landmarks(
-                frame, hand_landmarks, mp_hands.HAND_CONNECTIONS
-            )
+            mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
             detected = detect_hand_in_rois(hand_landmarks, rois_crew, frame)
             crew_regions.update(detected)
 
@@ -314,16 +306,14 @@ def process_frame(frame):
     new_action = actions[0] if actions else None
 
     if new_action and new_action != current_action:
-        print(f"Detected Action: {new_action}")
+        # print(f"Detected Action: {new_action}")
         current_action = new_action
 
     # Display detected action
-    draw_action_text(frame, [current_action] if current_action else [])
+    action_status = draw_action_text(frame, [current_action] if current_action else [])
 
+    return action_status
 
-    
-            
-    
 
 # img_path = "/home/tuanphan/AI documents/FPT_AI_Semester/VIET DYNAMIC/SOP-monitored-by-AI/data/Screenshot from 2025-03-17 21-08-13.png"
 # img = cv2.imread(img_path)
