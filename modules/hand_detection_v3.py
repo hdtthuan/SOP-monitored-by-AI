@@ -87,27 +87,8 @@ def update_object_roi_status_from_boxes(
         # If ROI has been detected for the required number of frames, mark it as active
         if counts[object_name] >= threshold_frames:
             active_rois.add(object_name)
-        
+
     return active_rois  # Return the set of active ROI indices
-
-    # for i, roi in enumerate(roi_object):  # Iterate through each predefined ROI
-    #     detected = False  # Flag to check if ROI is detected in this frame
-
-    #     for box in detection_boxes:  # Compare ROI against all detected bounding boxes
-    #         if (
-    #             iou(roi, box) >= overlap_threshold
-    #         ):  # Check if overlap is above threshold
-    #             detected = True
-    #             break  # Exit loop early if detected
-
-    #     # Update the counts dictionary based on detection status
-    #     counts[i] = counts.get(i, 0) + 1 if detected else 0
-
-    #     # If ROI has been detected for the required number of frames, mark it as active
-    #     if counts[i] >= threshold_frames:
-    #         active_rois.add(i + 1)  # Store 1-based index for consistency
-
-    # return active_rois  # Return the set of active ROI indices
 
 
 def detect_hand_in_rois(hand_landmarks: mp.solutions.hands.HandLandmark, rois, frame):
@@ -223,7 +204,7 @@ Returns:
 global current_action, object_states
 
 
-object_disappear_count = {} # {object_name: disappear_count}
+object_disappear_count = {}  # {object_name: disappear_count}
 object_states = {object_name: True for object_name in roi_object.keys()}
 disappear_threshold = 30
 overlap_threshold_default = 0.3
@@ -260,11 +241,12 @@ def process_frame_action(frame):
             if conf >= 0.3:
                 detection_boxes.append((int(x1), int(y1), int(x2), int(y2), cls))
 
-
     # Update object state
     for object_name, roi in roi_object.items():
         threshold = (
-            overlap_threshold_tua_vit if object_name == 'Allen Key' else overlap_threshold_default
+            overlap_threshold_tua_vit
+            if object_name == "Allen Key"
+            else overlap_threshold_default
         )
         detected = any(
             iou(roi, (x1, y1, x2, y2)) >= threshold
@@ -275,10 +257,11 @@ def process_frame_action(frame):
             object_states[object_name] = True
             object_disappear_count[object_name] = 0
         else:
-            object_disappear_count[object_name] = object_disappear_count.get(object_name, 0) + 1
+            object_disappear_count[object_name] = (
+                object_disappear_count.get(object_name, 0) + 1
+            )
             if object_disappear_count[object_name] >= disappear_threshold:
                 object_states[object_name] = False
-
 
     # Draw object detection results
     for object_name, roi in roi_object.items():
@@ -294,35 +277,6 @@ def process_frame_action(frame):
             (0, 0, 255),
             2,
         )
-
-    # # Draw object detection results
-    # for i, roi in enumerate(roi_object):
-    #     x1, y1, x2, y2 = roi
-    #     color = (0, 0, 255) if object_states[i + 1] else (100, 100, 100)
-    #     cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-    #     cv2.putText(
-    #         frame,
-    #         f"Obj {i + 1}",
-    #         (x1, y1 - 5),
-    #         cv2.FONT_HERSHEY_SIMPLEX,
-    #         0.6,
-    #         color,
-    #         2,
-    #     )
-
-    # # Draw crew detection regions
-    # for i, roi in enumerate(rois_crew):
-    #     x1, y1, x2, y2 = roi
-    #     cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-    #     cv2.putText(
-    #         frame,
-    #         f"Crew {i + 1}",
-    #         (x1, y1 - 5),
-    #         cv2.FONT_HERSHEY_SIMPLEX,
-    #         0.6,
-    #         (0, 255, 0),
-    #         2,
-    #     )
 
     global current_action
     # Hand detection
@@ -348,8 +302,3 @@ def process_frame_action(frame):
     action_status = draw_action_text(frame, [current_action] if current_action else [])
 
     return action_status
-
-
-# img_path = "/home/tuanphan/AI documents/FPT_AI_Semester/VIET DYNAMIC/SOP-monitored-by-AI/data/Screenshot from 2025-03-17 21-08-13.png"
-# img = cv2.imread(img_path)
-# process_frame(img)
