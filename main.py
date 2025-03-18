@@ -5,6 +5,8 @@ logging.getLogger("ultralytics").setLevel(logging.ERROR)
 from ultralytics import YOLO
 import mediapipe as mp
 import global_variable
+from modules.hand_detection_v3 import process_frame
+from modules.roi_selection import roi_selection_loop
 
 
 
@@ -30,6 +32,8 @@ if not cap.isOpened():
     print("Error: Unable to open video source", source)
     exit()
 
+roi_selection_loop(source)
+
 hands_detector = mp_hands.Hands(
         static_image_mode=False,
         max_num_hands=2,
@@ -44,18 +48,20 @@ while True:
         break
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-    results = model(frame, verbose=False, conf=0.3) # TODO: Here is result of predict yolo
+    # # results = model(frame, verbose=False, conf=0.3) # TODO: Here is result of predict yolo
     # code example
     # for r in results:
     #     for box in r.boxes.data.tolist():
     #         x1, y1, x2, y2, conf, cls = box
     #         print(x1, y1, x2, y2, conf, cls)
 
-    results_hands = hands_detector.process(frame_rgb) # TODO: Here is result of hand pose
+    # # results_hands = hands_detector.process(frame_rgb) # TODO: Here is result of hand pose
     # code exmaple
     # if results_hands.multi_hand_landmarks:
     #     for hand_landmarks in results_hands.multi_hand_landmarks:
     #         print(hand_landmarks)
+
+    process_frame(frame)
 
     cv2.imshow("Hand Detection", frame)
     key = cv2.waitKey(1) & 0xFF
