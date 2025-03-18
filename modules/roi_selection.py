@@ -9,7 +9,9 @@ start_point = None  # Điểm bắt đầu khi vẽ ROI
 frame = None  # Frame video hiện tại
 
 # Khởi tạo YOLO model
-model = YOLO("../models/best.pt")
+yolo_path = '/home/tuanphan/AI documents/FPT_AI_Semester/VIET DYNAMIC/SOP-monitored-by-AI/models/last_bk0.3.pt'
+
+model = YOLO(yolo_path)
 
 def draw_roi(event, x, y, flags, param):
     """

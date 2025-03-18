@@ -9,7 +9,9 @@ missing_objects = set()  # Lưu object bị mất
 mp_hands = mp.solutions.hands
 mp_drawing = mp.solutions.drawing_utils
 # Khởi tạo YOLO model
-model = YOLO("best.pt")
+yolo_path = '/home/tuanphan/AI documents/FPT_AI_Semester/VIET DYNAMIC/SOP-monitored-by-AI/models/last_bk0.3.pt'
+
+model = YOLO(yolo_path)
 
 def iou(boxA, boxB):
     """
