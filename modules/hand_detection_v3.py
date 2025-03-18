@@ -61,7 +61,7 @@ def update_object_roi_status_from_boxes(
 
     Parameters:
     - detection_boxes: List of bounding boxes detected in the current frame.
-    - roi_object: List of predefined ROIs (Regions of Interest) to be checked against detection_boxes.
+    - roi_object: {object_name: (x1, y1, x2, y2)} dictionary mapping object names to their ROIs.
     - counts: Dictionary tracking the number of consecutive frames where each ROI is detected.
     - threshold_frames: Number of consecutive frames required for an ROI to be considered active.
     - overlap_threshold: Minimum IoU (Intersection over Union) value required to consider an ROI as detected.
@@ -71,10 +71,10 @@ def update_object_roi_status_from_boxes(
     """
     active_rois = set()  # Stores the indices of active ROIs to avoid duplicates
 
-    for i, roi in enumerate(roi_object):  # Iterate through each predefined ROI
+    for object_name, roi in roi_object.items():  # Iterate through each predefined ROI
         detected = False  # Flag to check if ROI is detected in this frame
 
-        for box in detection_boxes:  # Compare ROI against all detected bounding boxes
+        for box in detection_boxes:
             if (
                 iou(roi, box) >= overlap_threshold
             ):  # Check if overlap is above threshold
@@ -82,13 +82,32 @@ def update_object_roi_status_from_boxes(
                 break  # Exit loop early if detected
 
         # Update the counts dictionary based on detection status
-        counts[i] = counts.get(i, 0) + 1 if detected else 0
+        counts[object_name] = counts.get(object_name, 0) + 1 if detected else 0
 
         # If ROI has been detected for the required number of frames, mark it as active
-        if counts[i] >= threshold_frames:
-            active_rois.add(i + 1)  # Store 1-based index for consistency
-
+        if counts[object_name] >= threshold_frames:
+            active_rois.add(object_name)
+        
     return active_rois  # Return the set of active ROI indices
+
+    # for i, roi in enumerate(roi_object):  # Iterate through each predefined ROI
+    #     detected = False  # Flag to check if ROI is detected in this frame
+
+    #     for box in detection_boxes:  # Compare ROI against all detected bounding boxes
+    #         if (
+    #             iou(roi, box) >= overlap_threshold
+    #         ):  # Check if overlap is above threshold
+    #             detected = True
+    #             break  # Exit loop early if detected
+
+    #     # Update the counts dictionary based on detection status
+    #     counts[i] = counts.get(i, 0) + 1 if detected else 0
+
+    #     # If ROI has been detected for the required number of frames, mark it as active
+    #     if counts[i] >= threshold_frames:
+    #         active_rois.add(i + 1)  # Store 1-based index for consistency
+
+    # return active_rois  # Return the set of active ROI indices
 
 
 def detect_hand_in_rois(hand_landmarks: mp.solutions.hands.HandLandmark, rois, frame):
@@ -161,13 +180,13 @@ def draw_action_text(frame: cv2.Mat, actions_list) -> None:
         return text
 
 
-def detect_actions(object_states, hand_states):
+def detect_actions(object_states, crew_regions):
     """
     Detects actions based on object and hand states.
 
     Parameters:
-    - object_states: A dictionary mapping object IDs to their presence status (True = present, False = absent).
-    - hand_states: A list of crew member IDs detected via hand presence.
+    - object_states: {object_name: True/False} dictionary mapping object_name to their presence status.
+    - crew_regions: A list of crew member IDs detected via hand presence.
 
     Returns:
     - actions_list: A list of strings describing detected actions.
@@ -175,17 +194,17 @@ def detect_actions(object_states, hand_states):
     actions_list = []
 
     # Detect object interactions
-    for obj_id, is_present in object_states.items():
-        if not is_present and obj_id not in ignored_objects:  # Detect only once
-            if obj_id == 5:
-                actions_list.append("get Tua Vit")
+    for object_name, is_present in object_states.items():
+        if not is_present and object_name not in ignored_objects:  # Detect only once
+            if object_name == "Allen Key":
+                actions_list.append("get Allen Key")
             else:
-                actions_list.append(f"get object [{obj_id}]")
+                actions_list.append(f"get [{object_name}]")
 
-            ignored_objects.add(obj_id)  # Ignore this object in future detections
+            ignored_objects.add(object_name)  # Ignore this object in future detections
 
     # Detect hand interactions
-    for crew_id in hand_states:
+    for crew_id in crew_regions:
         actions_list.append(f"get crew [{crew_id}]")
 
     return actions_list
@@ -204,8 +223,8 @@ Returns:
 global current_action, object_states
 
 
-object_disappear_count = {}
-object_states = {i + 1: True for i in range(len(roi_object))}
+object_disappear_count = {} # {object_name: disappear_count}
+object_states = {object_name: True for object_name in roi_object.keys()}
 disappear_threshold = 30
 overlap_threshold_default = 0.3
 overlap_threshold_tua_vit = 0.1
@@ -221,10 +240,10 @@ hands_detector = mp_hands.Hands(
 def process_frame_action(frame):
     """
     Processes a single frame of video to detect hands and objects.
-    
+
     Parameters:
     - frame: The current video frame to be processed.
-    
+
     Returns:
     - action_status: A string describing the detected action.
     """
@@ -235,17 +254,17 @@ def process_frame_action(frame):
     for r in results:
         for box in r.boxes.data.tolist():
             x1, y1, x2, y2, conf, cls = box
-            cls = int(cls)
-            if cls in ignored_objects:
+            object_name = model.names[int(cls)]
+            if object_name in ignored_objects:
                 continue  # 🔥 Không cần YOLO detect lại object 1-4
             if conf >= 0.3:
                 detection_boxes.append((int(x1), int(y1), int(x2), int(y2), cls))
 
-    # Update object states
-    for i, roi in enumerate(roi_object):
-        obj_id = i + 1
+
+    # Update object state
+    for object_name, roi in roi_object.items():
         threshold = (
-            overlap_threshold_tua_vit if obj_id == 5 else overlap_threshold_default
+            overlap_threshold_tua_vit if object_name == 'Allen Key' else overlap_threshold_default
         )
         detected = any(
             iou(roi, (x1, y1, x2, y2)) >= threshold
@@ -253,41 +272,57 @@ def process_frame_action(frame):
         )
 
         if detected:
-            object_states[obj_id] = True
-            object_disappear_count[obj_id] = 0
+            object_states[object_name] = True
+            object_disappear_count[object_name] = 0
         else:
-            object_disappear_count[obj_id] = object_disappear_count.get(obj_id, 0) + 1
-            if object_disappear_count[obj_id] >= disappear_threshold:
-                object_states[obj_id] = False
+            object_disappear_count[object_name] = object_disappear_count.get(object_name, 0) + 1
+            if object_disappear_count[object_name] >= disappear_threshold:
+                object_states[object_name] = False
+
 
     # Draw object detection results
-    for i, roi in enumerate(roi_object):
-        x1, y1, x2, y2 = roi
-        color = (0, 0, 255) if object_states[i + 1] else (100, 100, 100)
-        cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+    for object_name, roi in roi_object.items():
+
+        color = (0, 0, 255) if object_states[object_name] else (100, 100, 100)
+        cv2.rectangle(frame, (roi[0], roi[1]), (roi[2], roi[3]), (0, 0, 255), 2)
         cv2.putText(
             frame,
-            f"Obj {i + 1}",
-            (x1, y1 - 5),
+            f"{object_name}",
+            (roi[0], roi[1] - 5),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.6,
-            color,
+            (0, 0, 255),
             2,
         )
 
-    # Draw crew detection regions
-    for i, roi in enumerate(rois_crew):
-        x1, y1, x2, y2 = roi
-        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-        cv2.putText(
-            frame,
-            f"Crew {i + 1}",
-            (x1, y1 - 5),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.6,
-            (0, 255, 0),
-            2,
-        )
+    # # Draw object detection results
+    # for i, roi in enumerate(roi_object):
+    #     x1, y1, x2, y2 = roi
+    #     color = (0, 0, 255) if object_states[i + 1] else (100, 100, 100)
+    #     cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+    #     cv2.putText(
+    #         frame,
+    #         f"Obj {i + 1}",
+    #         (x1, y1 - 5),
+    #         cv2.FONT_HERSHEY_SIMPLEX,
+    #         0.6,
+    #         color,
+    #         2,
+    #     )
+
+    # # Draw crew detection regions
+    # for i, roi in enumerate(rois_crew):
+    #     x1, y1, x2, y2 = roi
+    #     cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+    #     cv2.putText(
+    #         frame,
+    #         f"Crew {i + 1}",
+    #         (x1, y1 - 5),
+    #         cv2.FONT_HERSHEY_SIMPLEX,
+    #         0.6,
+    #         (0, 255, 0),
+    #         2,
+    #     )
 
     global current_action
     # Hand detection
