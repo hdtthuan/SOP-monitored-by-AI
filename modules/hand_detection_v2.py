@@ -13,7 +13,7 @@ mp_hands = mp.solutions.hands
 mp_drawing = mp.solutions.drawing_utils
 # Khởi tạo YOLO model
 model = YOLO(
-    "models/best_v2.pt"
+    "models/best_v3.pt"
 )
 
 
@@ -166,29 +166,33 @@ def detect_actions(object_states, crew_regions):
 
     Parameters:
     - object_states: {object_name: True/False} dictionary mapping object_name to their presence status.
-    - crew_regions: A list of crew member IDs detected via hand presence.
+    - crew_regions: A set of crew member IDs detected via hand presence.
 
     Returns:
     - actions_list: A list of strings describing detected actions.
     """
     actions_list = []
 
+    # Process object-related actions
     for object_name, is_present in object_states.items():
         if not is_present and object_name not in ignored_objects:
+            # For Allen Key, ensure the action string has square brackets
             if object_name == "Allen Key":
-                actions_list.append("get Allen Key")
-                # 🔥 Do NOT add Allen Key to ignored_objects, so it can be detected again
+                actions_list.append("get [Allen Key]")
+                # Do NOT add Allen Key to ignored_objects so it can be detected again
             else:
+                # For other objects, format as "get [object_name]"
                 actions_list.append(f"get [{object_name}]")
-                ignored_objects.add(object_name)  # Ignore other objects in future detections
+                ignored_objects.add(object_name)  # Ignore these objects in future detections
 
-    # 🔥 If Allen Key has been placed back, add "Put Allen Key" action
+    # If Allen Key has been placed back, add "Put [Allen Key]" action
     if object_states.get("Allen Key") == "returned":
-        actions_list.append("Put Allen Key")
+        actions_list.append("Put [Allen Key]")
         object_states["Allen Key"] = True  # Reset its state after detecting the action
 
-    # Detect hand interactions
+    # Process hand-related actions (screw detection)
     for crew_id in crew_regions:
+        # Format screw action as "get screw [crew_id]"
         actions_list.append(f"get screw [{crew_id}]")
 
     return actions_list

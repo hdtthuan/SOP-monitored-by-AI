@@ -5,14 +5,17 @@ import logging
 logging.getLogger("ultralytics").setLevel(logging.ERROR)
 from ultralytics import YOLO
 import mediapipe as mp
-import global_variable
 from modules.hand_detection_v2 import process_frame_action
 from modules.roi_selection import roi_selection_loop
+from modules.SOP_monitoring import SOPMonitoring  # Import SOPMonitoring
 
+# Initialize SOP Monitoring
+sop_monitor = SOPMonitoring()
 
-mp_hands = mp.solutions.hands
+mp_hands = mp.solutions.hands   
 mp_drawing = mp.solutions.drawing_utils
 
+# Argument parsing
 parser = argparse.ArgumentParser(description="ROI selection and hand detection.")
 parser.add_argument(
     "--source",
@@ -24,7 +27,7 @@ parser.add_argument(
     "--yolo_weight",
     type=str,
     default="./models/last_bk0.3.pt",
-    help="Path to video file or camera index (default: 0)",
+    help="Path to YOLO model weights",
 )
 args = parser.parse_args()
 
@@ -38,6 +41,7 @@ if not cap.isOpened():
     print("Error: Unable to open video source", source)
     exit()
 
+# ROI Selection
 roi_selection_loop(source)
 
 hands_detector = mp_hands.Hands(
@@ -47,28 +51,20 @@ hands_detector = mp_hands.Hands(
 model = YOLO(args.yolo_weight)
 
 while True:
-    ret, frame = (
-        cap.read()
-    )  # TODO: do you see variable frame ?, it can be input, and you can use cv2 draw into this frame inside function.
+    ret, frame = cap.read()
     if not ret:
         break
+
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-    # # results = model(frame, verbose=False, conf=0.3) # TODO: Here is result of predict yolo
-    # code example
-    # for r in results:
-    #     for box in r.boxes.data.tolist():
-    #         x1, y1, x2, y2, conf, cls = box
-    #         print(x1, y1, x2, y2, conf, cls)
-
-    # # results_hands = hands_detector.process(frame_rgb) # TODO: Here is result of hand pose
-    # code exmaple
-    # if results_hands.multi_hand_landmarks:
-    #     for hand_landmarks in results_hands.multi_hand_landmarks:
-    #         print(hand_landmarks)
-
+    # Process frame for object and hand detection
     action_status = process_frame_action(frame)
-    print(action_status)
+
+    # Validate detected action against SOP sequence
+    if action_status:
+        if not sop_monitor.validate_action(action_status):
+            print("SOP sequence violated. Stopping process.")
+            break  # 🔥 Stop main loop immediately if SOP is violated
 
     cv2.imshow("Hand Detection", frame)
     key = cv2.waitKey(1) & 0xFF
