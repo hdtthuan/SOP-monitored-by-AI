@@ -7,7 +7,7 @@ from ultralytics import YOLO
 import mediapipe as mp
 from modules.hand_detection_v2 import process_frame_action
 from modules.roi_selection import roi_selection_loop
-from modules.SOP_monitoring import SOPMonitoring  # Import SOPMonitoring
+from modules.SOP_monitoring_v2 import SOPMonitoring  # Import SOPMonitoring
 
 # Initialize SOP Monitoring
 sop_monitor = SOPMonitoring()

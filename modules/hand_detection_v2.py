@@ -12,10 +12,7 @@ last_allen_key_state = True  # 🔥 Keeps track of Allen Key state across frames
 mp_hands = mp.solutions.hands
 mp_drawing = mp.solutions.drawing_utils
 # Khởi tạo YOLO model
-model = YOLO(
-    "models/best_v3.pt"
-)
-
+model = YOLO("models/best_v3.pt")
 
 def iou(
     boxA: tuple[float, float, float, float], boxB: tuple[float, float, float, float]
