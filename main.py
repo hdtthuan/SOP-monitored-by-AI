@@ -5,7 +5,7 @@ import logging
 logging.getLogger("ultralytics").setLevel(logging.ERROR)
 from ultralytics import YOLO
 import mediapipe as mp
-from modules.hand_detection_v2 import process_frame_action
+
 from modules.roi_selection import roi_selection_loop
 from modules.SOP_monitoring_v2 import SOPMonitoring  # Import SOPMonitoring
 
@@ -20,13 +20,13 @@ parser = argparse.ArgumentParser(description="ROI selection and hand detection."
 parser.add_argument(
     "--source",
     type=str,
-    default="./data/Val_video.mp4",
+    default=r"C:\Users\GMT\SOP-monitored-by-AI\data\wrong_video\WIN_20250327_11_43_34_Pro.mp4",
     help="Path to video file or camera index (default: 0)",
 )
 parser.add_argument(
     "--yolo_weight",
     type=str,
-    default="./models/last_bk0.3.pt",
+    default="./models/best_v3.pt",
     help="Path to YOLO model weights",
 )
 args = parser.parse_args()
@@ -43,18 +43,20 @@ if not cap.isOpened():
 
 # ROI Selection
 roi_selection_loop(source)
-
+from modules.hand_detection_v2 import process_frame_action # tuan ngu
 hands_detector = mp_hands.Hands(
-    static_image_mode=False, max_num_hands=2, min_detection_confidence=0.7
+    static_image_mode=False, max_num_hands=2, min_detection_confidence=0.3
 )
 
-model = YOLO(args.yolo_weight)
+# model = YOLO(args.yolo_weight)
 
 while True:
     ret, frame = cap.read()
     if not ret:
         break
 
+    # frame = cv2.flip(frame, 1)
+    
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
     # Process frame for object and hand detection

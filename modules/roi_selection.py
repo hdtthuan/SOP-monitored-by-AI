@@ -50,19 +50,40 @@ def draw_roi(event, x, y, flags, param):
         selecting = False
 
 
-def yolo_detect_initial_rois(frame, model, label_accept=[]) -> dict:
+# def yolo_detect_initial_rois(frame, model, label_accept=[]) -> dict:
+#     """
+#     Uses YOLO to detect objects in the current frame and returns their bounding boxes as ROIs.
+#     """
+#     results = model(frame, conf=0.1)
+#     detected_rois = {}
+#     # YOLOv8 returns a list of Results objects (one per image)
+#     for r in results:
+#         for box in r.boxes.data.tolist():
+#             x1, y1, x2, y2, conf, cls = box
+#             print(x1, y1, x2, y2, conf, cls)
+#             if cls in label_accept:
+#                 detected_rois[model.names[int(cls)]] = ((int(x1), int(y1), int(x2), int(y2)))
+#     return detected_rois
+def yolo_detect_initial_rois(frame, model, label_accept=[]):
     """
-    Uses YOLO to detect objects in the current frame and returns their bounding boxes as ROIs.
+    Uses YOLO to detect objects in the current frame and returns only the highest confidence ROI per class.
     """
-    results = model(frame)
-    detected_rois = {}
-    # YOLOv8 returns a list of Results objects (one per image)
+    results = model(frame, conf=0.1)
+    best_rois = {}  # Lưu ROI có độ tin cậy cao nhất của mỗi class
+
     for r in results:
         for box in r.boxes.data.tolist():
             x1, y1, x2, y2, conf, cls = box
-            print(x1, y1, x2, y2, conf, cls)
+            cls = int(cls)  # Chuyển class index thành integer
+
             if cls in label_accept:
-                detected_rois[model.names[int(cls)]] = ((int(x1), int(y1), int(x2), int(y2)))
+                # Nếu chưa có ROI cho class này, hoặc confidence cao hơn thì cập nhật
+                if cls not in best_rois or conf > best_rois[cls][1]:
+                    best_rois[cls] = ((int(x1), int(y1), int(x2), int(y2)), conf)
+
+    # Chuyển đổi dictionary để chỉ lấy tọa độ ROI tốt nhất
+    detected_rois = {model.names[cls]: roi[0] for cls, roi in best_rois.items()}
+    print(detected_rois)
     return detected_rois
 
 
@@ -124,6 +145,7 @@ def roi_selection_loop(source):
         if key == ord("d"):
             detected_rois = yolo_detect_initial_rois(clone, model, [0, 1, 2, 3, 4])
             roi_object.update(detected_rois)
+            print("c2", roi_object)
         elif key == ord("q"):
             break
 

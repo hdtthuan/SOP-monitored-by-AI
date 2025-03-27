@@ -2,6 +2,7 @@ import cv2
 import mediapipe as mp
 from ultralytics import YOLO
 from modules.roi_selection import rois_crew, roi_object  # Import ROIs đã chọn
+import numpy as np
 
 # ===== Biến Toàn Cục =====
 missing_objects = set()  # Lưu object bị mất
@@ -12,7 +13,7 @@ last_allen_key_state = True  # 🔥 Keeps track of Allen Key state across frames
 mp_hands = mp.solutions.hands
 mp_drawing = mp.solutions.drawing_utils
 # Khởi tạo YOLO model
-model = YOLO("models/best_v3.pt")
+model = YOLO("models/best1.pt")
 
 def iou(
     boxA: tuple[float, float, float, float], boxB: tuple[float, float, float, float]
@@ -224,6 +225,11 @@ hands_detector = mp_hands.Hands(
 # print("Hand detection started. Press 'q' to quit.")
 
 
+def adjust_gamma(image, gamma=0.5):  # Giảm sáng (gamma < 1)
+    invGamma = 1.0 / gamma
+    table = np.array([(i / 255.0) ** invGamma * 255 for i in np.arange(0, 256)]).astype("uint8")
+    return cv2.LUT(image, table)
+
 def process_frame_action(frame):
     """
     Processes a single frame of video to detect hands and objects.
@@ -236,7 +242,18 @@ def process_frame_action(frame):
     """
 
     # Object detection using YOLO
-    results = model(frame, conf=0.3)
+    frame_low_gamma = adjust_gamma(frame, gamma=0.5)
+    results = model(frame_low_gamma, conf=0.2, iou=0.5)
+    # results = model(frame, verbose=False, conf=0.3)
+    # for r in results:
+    #     # Iterate over each detection box in the result
+    #     for box in r.boxes.data.tolist():
+    #         x1, y1, x2, y2, conf, cls = box
+    #         # Draw the bounding box (converted to integers)
+    #         cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
+    #         # Optionally, draw the confidence score above the box
+    #         cv2.putText(frame, f"{cls}: {conf:.2f}", (int(x1), int(y1) - 10),
+    #                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
     detection_boxes = []
     for r in results:
         for box in r.boxes.data.tolist():
@@ -244,7 +261,7 @@ def process_frame_action(frame):
             object_name = model.names[int(cls)]
             if object_name in ignored_objects:
                 continue  # 🔥 Không cần YOLO detect lại object 1-4
-            if conf >= 0.3:
+            if conf >= 0.2:
                 detection_boxes.append((int(x1), int(y1), int(x2), int(y2), cls))
 
     # Update object state
@@ -280,7 +297,7 @@ def process_frame_action(frame):
 
     # Draw object detection results
     for object_name, roi in roi_object.items():
-
+        print("c1", object_name, object_states)
         color = (0, 0, 255) if object_states[object_name] else (100, 100, 100)
         cv2.rectangle(frame, (roi[0], roi[1]), (roi[2], roi[3]), (0, 0, 255), 2)
         cv2.putText(
