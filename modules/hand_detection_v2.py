@@ -13,7 +13,16 @@ last_allen_key_state = True  # 🔥 Keeps track of Allen Key state across frames
 mp_hands = mp.solutions.hands
 mp_drawing = mp.solutions.drawing_utils
 # Khởi tạo YOLO model
-model = YOLO("models/best1.pt")
+from ultralytics import YOLO
+
+class HandDetector:
+    def __init__(self, model_path):
+        self.model = YOLO(model_path)  # ✅ Use dynamic model path
+
+    def detect_hands(self, frame):
+        results = self.model(frame)
+        return results
+
 
 def iou(
     boxA: tuple[float, float, float, float], boxB: tuple[float, float, float, float]
@@ -137,6 +146,7 @@ def draw_action_text(frame: cv2.Mat, actions_list) -> None:
     if frame is None or frame.shape[0] == 0 or frame.shape[1] == 0:
         raise ValueError("Invalid frame dimensions.")
 
+
     if actions_list:
         text = " | ".join(actions_list)
         text_position = (50, 50)  # Default position
@@ -230,7 +240,8 @@ def adjust_gamma(image, gamma=0.5):  # Giảm sáng (gamma < 1)
     table = np.array([(i / 255.0) ** invGamma * 255 for i in np.arange(0, 256)]).astype("uint8")
     return cv2.LUT(image, table)
 
-def process_frame_action(frame):
+def process_frame_action(frame, hand_detector):  
+
     """
     Processes a single frame of video to detect hands and objects.
 
@@ -243,7 +254,7 @@ def process_frame_action(frame):
 
     # Object detection using YOLO
     frame_low_gamma = adjust_gamma(frame, gamma=0.5)
-    results = model(frame_low_gamma, conf=0.2, iou=0.5)
+    results = hand_detector.model(frame_low_gamma, verbose=False, conf=0.2, iou=0.5)
     # results = model(frame, verbose=False, conf=0.3)
     # for r in results:
     #     # Iterate over each detection box in the result
@@ -258,7 +269,7 @@ def process_frame_action(frame):
     for r in results:
         for box in r.boxes.data.tolist():
             x1, y1, x2, y2, conf, cls = box
-            object_name = model.names[int(cls)]
+            object_name = hand_detector.model.names[int(cls)]
             if object_name in ignored_objects:
                 continue  # 🔥 Không cần YOLO detect lại object 1-4
             if conf >= 0.2:
@@ -297,7 +308,7 @@ def process_frame_action(frame):
 
     # Draw object detection results
     for object_name, roi in roi_object.items():
-        print("c1", object_name, object_states)
+       
         color = (0, 0, 255) if object_states[object_name] else (100, 100, 100)
         cv2.rectangle(frame, (roi[0], roi[1]), (roi[2], roi[3]), (0, 0, 255), 2)
         cv2.putText(
@@ -325,12 +336,12 @@ def process_frame_action(frame):
     # Detect actions based on object and hand states
     actions = detect_actions(object_states, crew_regions)
     new_action = actions[0] if actions else None
-
+    
     if new_action and new_action != current_action:
         # print(f"Detected Action: {new_action}")
         current_action = new_action
-
-    # Display detected action
+    
+    # Nếu show_action_text là True, vẽ text lên frame
     action_status = draw_action_text(frame, [current_action] if current_action else [])
-
     return action_status
+
