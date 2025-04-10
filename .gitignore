@@ -25,3 +25,4 @@ venv/
 
 # Ignore all subdirectories (folders) under the data folder
 data/*/
+runs/*
