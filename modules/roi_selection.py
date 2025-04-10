@@ -2,7 +2,7 @@ import cv2
 from ultralytics import YOLO
 
 # ===== Biến Toàn Cục =====
-global roi_object
+
 rois_crew = []  # Lưu ROIs được chọn thủ công
 roi_object = {}  # object_name: roi
 selecting = False  # Đánh dấu trạng thái đang chọn ROI
@@ -10,9 +10,16 @@ start_point = None  # Điểm bắt đầu khi vẽ ROI
 frame = None  # Frame video hiện tại
 
 # Khởi tạo YOLO model
-yolo_path = "models/last_bk0.3.pt"
+from ultralytics import YOLO
 
-model = YOLO(yolo_path)
+class ROISelector:
+    def __init__(self, model_path):
+        self.model = YOLO(model_path)  # ✅ Use dynamic model path
+
+    def select_roi(self, frame):
+        results = self.model(frame)
+        return results
+
 
 
 def draw_roi(event, x, y, flags, param):
@@ -83,17 +90,16 @@ def yolo_detect_initial_rois(frame, model, label_accept=[]):
 
     # Chuyển đổi dictionary để chỉ lấy tọa độ ROI tốt nhất
     detected_rois = {model.names[cls]: roi[0] for cls, roi in best_rois.items()}
-    print(detected_rois)
     return detected_rois
 
 
-def roi_selection_loop(source):
+def roi_selection_loop(source, roi_selector):
     """Mở video, chọn ROI bằng chuột hoặc tự động bằng YOLO."""
     global frame
     cap = cv2.VideoCapture(source)
     if not cap.isOpened():
         print("Error: Unable to open video source", source)
-        exit()
+        exit(3)
 
     ret, frame = cap.read()
     if not ret:
@@ -143,9 +149,9 @@ def roi_selection_loop(source):
         cv2.imshow("Select ROI", frame_display)
         key = cv2.waitKey(1) & 0xFF
         if key == ord("d"):
-            detected_rois = yolo_detect_initial_rois(clone, model, [0, 1, 2, 3, 4])
+            detected_rois = yolo_detect_initial_rois(clone, roi_selector.model, [0, 1, 2, 3, 4])
             roi_object.update(detected_rois)
-            print("c2", roi_object)
+            print(roi_object)
         elif key == ord("q"):
             break
 

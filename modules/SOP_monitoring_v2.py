@@ -112,6 +112,19 @@ class SOPMonitoring:
                 else:
                     print(f"[ERROR] No next action expected, but received: {action}")
                     return False
+    def reset_monitoring(self):
+        """Reset SOP sequence to allow re-monitoring from the beginning."""
+        self.current_step = 0
+        self.completed_initial_actions.clear()
+        self.last_validated_action = None
+        self.waiting_for_initial_actions = True
+        print("[INFO] SOP monitoring reset.")
+    def get_expected_action(self):
+        # Return the current expected action from SOP
+        if self.current_step < len(self.sop_sequence):
+            return self.sop_sequence[self.current_step]
+        return None
+
 
     def is_sop_complete(self):
         """
@@ -122,3 +135,4 @@ class SOPMonitoring:
           - False otherwise.
         """
         return self.current_step >= len(self.sop_sequence)
+    
