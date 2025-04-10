@@ -26,12 +26,12 @@ parser.add_argument(
 parser.add_argument(
     "--yolo_weight",
     type=str,
-    default="./models/best_v3.pt",
+    default="./models/best_v4.pt",
     help="Path to YOLO model weights",
 )
 args = parser.parse_args()
 yolo_weight_path = args.yolo_weight
-roi_selector = ROISelector("models/last_bk0.3.pt")
+roi_selector = ROISelector("models/best-test.pt")
 
 try:
     source = int(args.source)
